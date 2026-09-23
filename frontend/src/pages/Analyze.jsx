@@ -1,225 +1,639 @@
 import React, { useEffect, useState } from "react";
-import api from "../api";
-import ScoreCard from "../components/ScoreCard";
-import TagList from "../components/TagList";
+import { uploadResume, analyzeResume } from "../api";
+import "./Analyze.css";
 
-const initialForm = {
-  candidateName: "",
-  resumeText: "",
-  jobDescription: ""
-};
+const STORAGE_KEY = "careerPilotAnalysis";
 
-export default function Analyze() {
-  const [form, setForm] = useState(() => {
-    const savedForm = localStorage.getItem("careerpilot-form");
-    return savedForm ? JSON.parse(savedForm) : initialForm;
-  });
+function Analyze() {
+  const [candidateName, setCandidateName] = useState("");
 
-  const [result, setResult] = useState(() => {
-    const savedResult = localStorage.getItem("careerpilot-result");
-    return savedResult ? JSON.parse(savedResult) : null;
-  });
+  const [resumeFile, setResumeFile] = useState(null);
+  const [resumeFileName, setResumeFileName] = useState("");
+  const [resumeText, setResumeText] = useState("");
 
-  const [loading, setLoading] = useState(false);
+  const [jobDescription, setJobDescription] = useState("");
+
+  const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  // Save form whenever it changes
-  useEffect(() => {
-    localStorage.setItem("careerpilot-form", JSON.stringify(form));
-  }, [form]);
+  const [result, setResult] = useState(null);
 
-  // Save result whenever it changes
+  // --------------------------------------------------
+  // RESTORE PREVIOUS DATA WHEN PAGE OPENS
+  // --------------------------------------------------
+
   useEffect(() => {
-    if (result) {
-      localStorage.setItem("careerpilot-result", JSON.stringify(result));
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+
+      if (!savedData) {
+        return;
+      }
+
+      const data = JSON.parse(savedData);
+
+      setCandidateName(data.candidateName || "");
+      setResumeFileName(data.resumeFileName || "");
+      setResumeText(data.resumeText || "");
+      setJobDescription(data.jobDescription || "");
+      setResult(data.result || null);
+
+      if (data.resumeText || data.result) {
+        setSuccess("Previous analysis restored.");
+      }
+    } catch (error) {
+      console.error("Failed to restore saved analysis:", error);
+
+      localStorage.removeItem(STORAGE_KEY);
     }
-  }, [result]);
+  }, []);
 
-  function update(field, value) {
-    setForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  }
+  // --------------------------------------------------
+  // SAVE DATA TO LOCAL STORAGE
+  // --------------------------------------------------
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  useEffect(() => {
+    // Don't create an empty localStorage entry when
+    // the user has not entered anything yet.
 
-    setLoading(true);
+    if (
+      !candidateName &&
+      !resumeFileName &&
+      !resumeText &&
+      !jobDescription &&
+      !result
+    ) {
+      return;
+    }
+
+    const dataToSave = {
+      candidateName,
+      resumeFileName,
+      resumeText,
+      jobDescription,
+      result,
+    };
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(dataToSave)
+    );
+  }, [
+    candidateName,
+    resumeFileName,
+    resumeText,
+    jobDescription,
+    result,
+  ]);
+
+  // --------------------------------------------------
+  // UPLOAD RESUME
+  // --------------------------------------------------
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
     setError("");
+    setSuccess("");
+    setResult(null);
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError("Please upload a PDF or DOCX file.");
+      event.target.value = "";
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setError("Resume file must be smaller than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setResumeFile(file);
+    setResumeFileName(file.name);
+    setResumeText("");
+    setUploading(true);
 
     try {
-      const { data } = await api.post("/analyze", form);
+      const data = await uploadResume(file);
+
+      if (!data.resumeText) {
+        throw new Error(
+          "No text could be extracted from the resume."
+        );
+      }
+
+      setResumeText(data.resumeText);
+
+      setSuccess(
+        "Resume uploaded and read successfully."
+      );
+    } catch (err) {
+      console.error("Resume upload error:", err);
+
+      setResumeFile(null);
+      setResumeFileName("");
+      setResumeText("");
+
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to upload and read the resume."
+      );
+
+      event.target.value = "";
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // --------------------------------------------------
+  // REMOVE RESUME
+  // --------------------------------------------------
+
+  const removeResume = () => {
+    setResumeFile(null);
+    setResumeFileName("");
+    setResumeText("");
+    setResult(null);
+    setSuccess("");
+    setError("");
+
+    const fileInput =
+      document.getElementById("resume-upload");
+
+    if (fileInput) {
+      fileInput.value = "";
+    }
+
+    // Remove saved resume and result
+    const savedData = localStorage.getItem(STORAGE_KEY);
+
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+
+        const updatedData = {
+          ...data,
+          resumeFileName: "",
+          resumeText: "",
+          result: null,
+        };
+
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(updatedData)
+        );
+      } catch (error) {
+        console.error(
+          "Failed to update saved data:",
+          error
+        );
+      }
+    }
+  };
+
+  // --------------------------------------------------
+  // START NEW ANALYSIS
+  // --------------------------------------------------
+
+  const startNewAnalysis = () => {
+    setCandidateName("");
+    setResumeFile(null);
+    setResumeFileName("");
+    setResumeText("");
+    setJobDescription("");
+    setResult(null);
+    setError("");
+    setSuccess("");
+
+    const fileInput =
+      document.getElementById("resume-upload");
+
+    if (fileInput) {
+      fileInput.value = "";
+    }
+
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  // --------------------------------------------------
+  // ANALYZE RESUME
+  // --------------------------------------------------
+
+  const handleAnalyze = async (event) => {
+    event.preventDefault();
+
+    setError("");
+    setSuccess("");
+    setResult(null);
+
+    if (!resumeText) {
+      setError("Please upload your resume first.");
+      return;
+    }
+
+    if (!jobDescription.trim()) {
+      setError("Please enter the job description.");
+      return;
+    }
+
+    setAnalyzing(true);
+
+    try {
+      const data = await analyzeResume({
+        candidateName:
+          candidateName.trim() || "Student",
+        resumeText,
+        jobDescription,
+      });
+
+      console.log("Analysis result:", data);
 
       setResult(data);
 
-      // Save latest analysis
-      localStorage.setItem(
-        "careerpilot-result",
-        JSON.stringify(data)
+      setSuccess(
+        "Resume analysis completed successfully."
       );
     } catch (err) {
+      console.error("Analysis error:", err);
+
       setError(
         err.response?.data?.message ||
-        "Could not analyze the resume."
+          "Failed to analyze the resume."
       );
     } finally {
-      setLoading(false);
+      setAnalyzing(false);
     }
-  }
+  };
 
   return (
-    <div className="container">
-      <section className="hero">
-        <p className="eyebrow">AI CAREER ASSISTANT</p>
+    <div className="analyze-page">
+      <div className="analyze-container">
 
-        <h1>
-          Turn your resume into a <span>job-ready</span> application.
-        </h1>
+        {/* HEADER */}
+        <div className="analyze-header">
+          <h1>CareerPilot AI</h1>
 
-        <p>
-          Paste your resume and a job description. CareerPilot combines
-          keyword analysis with Gemini-powered feedback to show what to improve.
-        </p>
-      </section>
-
-      <form className="analysis-grid" onSubmit={handleSubmit}>
-
-        <div className="panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Your Resume</h2>
-              <p>Paste the text from your resume.</p>
-            </div>
-          </div>
-
-          <input
-            value={form.candidateName}
-            onChange={e =>
-              update("candidateName", e.target.value)
-            }
-            placeholder="Candidate name (optional)"
-          />
-
-          <textarea
-            required
-            value={form.resumeText}
-            onChange={e =>
-              update("resumeText", e.target.value)
-            }
-            placeholder="Example: B.Tech IT student with experience in React, Node.js, MongoDB..."
-          />
+          <p>
+            Upload your resume and compare it with a job
+            description using AI-powered resume analysis.
+          </p>
         </div>
 
-        <div className="panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Job Description</h2>
-              <p>Paste the target role description.</p>
+        <form onSubmit={handleAnalyze}>
+
+          {/* CANDIDATE NAME */}
+          <div className="form-group">
+            <label htmlFor="candidateName">
+              Candidate Name
+            </label>
+
+            <input
+              id="candidateName"
+              type="text"
+              placeholder="Enter your name"
+              value={candidateName}
+              onChange={(e) =>
+                setCandidateName(e.target.value)
+              }
+            />
+          </div>
+
+          {/* RESUME UPLOAD */}
+          <div className="form-group">
+            <label htmlFor="resume-upload">
+              Upload Resume
+            </label>
+
+            <div className="upload-box">
+
+              {!resumeFileName ? (
+                <>
+                  <div className="upload-icon">
+                    📄
+                  </div>
+
+                  <h3>Upload your resume</h3>
+
+                  <p>
+                    PDF or DOCX files only
+                    <br />
+                    Maximum size: 5 MB
+                  </p>
+
+                  <label
+                    htmlFor="resume-upload"
+                    className="upload-button"
+                  >
+                    Choose Resume
+                  </label>
+
+                  <input
+                    id="resume-upload"
+                    type="file"
+                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleFileChange}
+                    hidden
+                  />
+                </>
+              ) : (
+                <div className="uploaded-file">
+
+                  <div className="file-icon">
+                    📄
+                  </div>
+
+                  <div className="file-info">
+                    <strong>
+                      {resumeFileName}
+                    </strong>
+
+                    <span>
+                      {resumeFile
+                        ? `${(
+                            resumeFile.size /
+                            1024 /
+                            1024
+                          ).toFixed(2)} MB`
+                        : "Previously uploaded"}
+                    </span>
+                  </div>
+
+                  {uploading ? (
+                    <span className="upload-status">
+                      Reading...
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="remove-button"
+                      onClick={removeResume}
+                    >
+                      Remove
+                    </button>
+                  )}
+
+                </div>
+              )}
+
             </div>
           </div>
 
-          <textarea
-            required
-            value={form.jobDescription}
-            onChange={e =>
-              update("jobDescription", e.target.value)
+          {/* JOB DESCRIPTION */}
+          <div className="form-group">
+            <label htmlFor="jobDescription">
+              Job Description
+            </label>
+
+            <textarea
+              id="jobDescription"
+              rows="12"
+              placeholder="Paste the job description here..."
+              value={jobDescription}
+              onChange={(e) =>
+                setJobDescription(e.target.value)
+              }
+            />
+          </div>
+
+          {/* ERROR */}
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+
+          {/* SUCCESS */}
+          {success && (
+            <div className="success-message">
+              {success}
+            </div>
+          )}
+
+          {/* ANALYZE BUTTON */}
+          <button
+            type="submit"
+            className="analyze-button"
+            disabled={
+              uploading ||
+              analyzing ||
+              !resumeText ||
+              !jobDescription.trim()
             }
-            placeholder="Example: We are looking for a software engineering intern with React, Node.js..."
-          />
-        </div>
+          >
+            {analyzing
+              ? "Analyzing..."
+              : uploading
+              ? "Reading Resume..."
+              : "Analyze Resume"}
+          </button>
 
-        <button
-          className="primary-btn analyze-btn"
-          disabled={loading}
-        >
-          {loading
-            ? "Analyzing..."
-            : "Analyze with AI →"}
-        </button>
+        </form>
 
-      </form>
+        {/* RESULT */}
+        {result && (
+          <div className="result-section">
 
-      {error && (
-        <div className="error">
-          {error}
-        </div>
-      )}
+            <div className="result-header">
+              <h2>Analysis Result</h2>
 
-      {result && (
-        <section className="results">
-
-          <div className="results-header">
-            <div>
-              <p className="eyebrow">
-                ANALYSIS COMPLETE
-              </p>
-
-              <h2>
-                Application insights
-              </h2>
+              <button
+                type="button"
+                className="new-analysis-button"
+                onClick={startNewAnalysis}
+              >
+                New Analysis
+              </button>
             </div>
 
-            <ScoreCard score={result.matchScore} />
+            {/* SCORE */}
+            {result.matchScore !== undefined && (
+              <div className="score">
+                Match Score: {result.matchScore}%
+              </div>
+            )}
+
+            {/* MATCHED KEYWORDS */}
+            {Array.isArray(result.matchedKeywords) &&
+              result.matchedKeywords.length > 0 && (
+                <div className="result-box">
+
+                  <h3>Matched Skills</h3>
+
+                  <div className="tags">
+                    {result.matchedKeywords.map(
+                      (keyword, index) => (
+                        <span
+                          key={index}
+                          className="tag matched"
+                        >
+                          {keyword}
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                </div>
+              )}
+
+            {/* MISSING KEYWORDS */}
+            {Array.isArray(result.missingKeywords) &&
+              result.missingKeywords.length > 0 && (
+                <div className="result-box">
+
+                  <h3>Missing Skills</h3>
+
+                  <div className="tags">
+                    {result.missingKeywords.map(
+                      (keyword, index) => (
+                        <span
+                          key={index}
+                          className="tag missing"
+                        >
+                          {keyword}
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                </div>
+              )}
+
+            {/* AI FEEDBACK */}
+            {result.aiFeedback && (
+              <div className="result-box">
+
+                <h3>AI Feedback</h3>
+
+                {/* SUMMARY */}
+                {result.aiFeedback.summary && (
+                  <div className="feedback-section">
+
+                    <h4>Summary</h4>
+
+                    <p>
+                      {result.aiFeedback.summary}
+                    </p>
+
+                  </div>
+                )}
+
+                {/* STRENGTHS */}
+                {Array.isArray(
+                  result.aiFeedback.strengths
+                ) &&
+                  result.aiFeedback.strengths.length >
+                    0 && (
+                    <div className="feedback-section">
+
+                      <h4>Strengths</h4>
+
+                      <ul>
+                        {result.aiFeedback.strengths.map(
+                          (strength, index) => (
+                            <li key={index}>
+                              {strength}
+                            </li>
+                          )
+                        )}
+                      </ul>
+
+                    </div>
+                  )}
+
+                {/* MISSING SKILLS */}
+                {Array.isArray(
+                  result.aiFeedback.missingSkills
+                ) &&
+                  result.aiFeedback.missingSkills.length >
+                    0 && (
+                    <div className="feedback-section">
+
+                      <h4>Skills to Improve</h4>
+
+                      <ul>
+                        {result.aiFeedback.missingSkills.map(
+                          (skill, index) => (
+                            <li key={index}>
+                              {skill}
+                            </li>
+                          )
+                        )}
+                      </ul>
+
+                    </div>
+                  )}
+
+                {/* SUGGESTIONS */}
+                {Array.isArray(
+                  result.aiFeedback.suggestions
+                ) &&
+                  result.aiFeedback.suggestions.length >
+                    0 && (
+                    <div className="feedback-section">
+
+                      <h4>Suggestions</h4>
+
+                      <ul>
+                        {result.aiFeedback.suggestions.map(
+                          (suggestion, index) => (
+                            <li key={index}>
+                              {suggestion}
+                            </li>
+                          )
+                        )}
+                      </ul>
+
+                    </div>
+                  )}
+
+                {/* INTERVIEW TOPICS */}
+                {Array.isArray(
+                  result.aiFeedback.interviewTopics
+                ) &&
+                  result.aiFeedback.interviewTopics.length >
+                    0 && (
+                    <div className="feedback-section">
+
+                      <h4>Interview Topics</h4>
+
+                      <ul>
+                        {result.aiFeedback.interviewTopics.map(
+                          (topic, index) => (
+                            <li key={index}>
+                              {topic}
+                            </li>
+                          )
+                        )}
+                      </ul>
+
+                    </div>
+                  )}
+
+              </div>
+            )}
+
           </div>
+        )}
 
-          <div className="result-grid">
-
-            <div className="panel">
-              <h3>AI Summary</h3>
-
-              <p>
-                {result.aiFeedback?.summary}
-              </p>
-
-              <TagList
-                title="Matched keywords"
-                items={result.matchedKeywords}
-              />
-
-              <TagList
-                title="Potential gaps"
-                items={result.missingKeywords}
-                variant="warning"
-              />
-            </div>
-
-            <div className="panel">
-              <h3>What to improve</h3>
-
-              <ul className="insight-list">
-                {(result.aiFeedback?.suggestions || [])
-                  .map((x, i) => (
-                    <li key={i}>{x}</li>
-                  ))}
-              </ul>
-            </div>
-
-            <div className="panel">
-              <h3>Strengths</h3>
-
-              <ul className="insight-list">
-                {(result.aiFeedback?.strengths || [])
-                  .map((x, i) => (
-                    <li key={i}>{x}</li>
-                  ))}
-              </ul>
-            </div>
-
-            <div className="panel">
-              <h3>Interview preparation</h3>
-
-              <ul className="insight-list">
-                {(result.aiFeedback?.interviewTopics || [])
-                  .map((x, i) => (
-                    <li key={i}>{x}</li>
-                  ))}
-              </ul>
-            </div>
-
-          </div>
-        </section>
-      )}
+      </div>
     </div>
   );
 }
+
+export default Analyze;
