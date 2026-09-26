@@ -16,7 +16,7 @@ export async function uploadResume(file) {
 }
 
 export async function analyzeResume(data) {
-  const response = await API.post("/analyze", data);
+  const response = await API.post("api/analyze", data);
 
   return response.data;
 }
