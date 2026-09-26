@@ -25,7 +25,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // Resume upload and text extraction
-app.use("/api/resume", resumeRoutes);
+app.use("/resume", resumeRoutes);
 
 // Resume analysis
 app.use("/api/analyze", analysisRoutes);
