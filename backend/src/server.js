@@ -25,10 +25,10 @@ app.get("/api/health", (req, res) => {
 });
 
 // Resume upload and text extraction
-app.use("/resume", resumeRoutes);
+app.use("/api/resume", resumeRoutes);
 
-// Resume analysis
-app.use("/analyze", analysisRoutes);
+// Resume analysis and history
+app.use("/api/analyze", analysisRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
