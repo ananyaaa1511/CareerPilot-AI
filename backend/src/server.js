@@ -28,7 +28,7 @@ app.get("/api/health", (req, res) => {
 app.use("/resume", resumeRoutes);
 
 // Resume analysis
-app.use("/api/analyze", analysisRoutes);
+app.use("/analyze", analysisRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
