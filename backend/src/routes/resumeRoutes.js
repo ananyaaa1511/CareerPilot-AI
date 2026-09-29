@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { extractResumeText } from "../controllers/resumeController.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -25,6 +26,6 @@ const upload = multer({
   },
 });
 
-router.post("/extract", upload.single("resume"), extractResumeText);
+router.post("/extract", requireAuth, upload.single("resume"), extractResumeText);
 
 export default router;

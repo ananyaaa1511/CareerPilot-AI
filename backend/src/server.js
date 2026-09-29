@@ -5,6 +5,7 @@ import { connectDB } from "./config/db.js";
 
 import analysisRoutes from "./routes/analysisRoutes.js";
 import resumeRoutes from "./routes/resumeRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,6 +25,8 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.use("/api/auth", authRoutes);
+
 // Resume upload and text extraction
 app.use("/api/resume", resumeRoutes);
 
@@ -35,7 +38,7 @@ app.use((err, req, res, next) => {
   console.error(err);
 
   res.status(500).json({
-    message: err.message || "Unexpected server error.",
+    message: "Unexpected server error.",
   });
 });
 

@@ -23,6 +23,7 @@ export async function createAnalysis(req, res) {
     });
 
     const analysis = await Analysis.create({
+      user: req.user._id,
       candidateName: candidateName?.trim() || "Student",
       resumeText,
       jobDescription,
@@ -37,14 +38,13 @@ export async function createAnalysis(req, res) {
     console.error(error);
     res.status(500).json({
       message: "Analysis failed.",
-      error: error.message
     });
   }
 }
 
 export async function getAnalyses(req, res) {
   try {
-    const analyses = await Analysis.find()
+    const analyses = await Analysis.find({ user: req.user._id })
       .select("candidateName matchScore matchedKeywords missingKeywords aiFeedback.summary createdAt")
       .sort({ createdAt: -1 })
       .limit(20);
@@ -57,7 +57,7 @@ export async function getAnalyses(req, res) {
 
 export async function getAnalysisById(req, res) {
   try {
-    const analysis = await Analysis.findById(req.params.id);
+    const analysis = await Analysis.findOne({ _id: req.params.id, user: req.user._id });
     if (!analysis) return res.status(404).json({ message: "Analysis not found." });
     res.json(analysis);
   } catch {
@@ -67,7 +67,7 @@ export async function getAnalysisById(req, res) {
 
 export async function deleteAnalysis(req, res) {
   try {
-    const deleted = await Analysis.findByIdAndDelete(req.params.id);
+    const deleted = await Analysis.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     if (!deleted) return res.status(404).json({ message: "Analysis not found." });
     res.json({ message: "Analysis deleted." });
   } catch {

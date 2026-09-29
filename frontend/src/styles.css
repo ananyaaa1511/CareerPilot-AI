@@ -23,6 +23,16 @@ button, input, textarea { font: inherit; }
 nav { display: flex; gap: 24px; }
 nav a { color: #6d7485; text-decoration: none; font-weight: 600; }
 nav a.active { color: #6c4df6; }
+.user-menu { display: flex; align-items: center; gap: 9px; color: #566074; font-size: .88rem; }
+.user-menu img { width: 30px; height: 30px; border-radius: 50%; }
+.user-menu button { border: 0; background: transparent; color: #6c4df6; cursor: pointer; font-weight: 700; }
+.login-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at top left, #e9e3ff, transparent 38%), #f5f7fb; }
+.login-card { width: min(100%, 460px); padding: 44px; background: #fff; border: 1px solid #e7eaf0; border-radius: 22px; box-shadow: 0 18px 45px rgba(30,40,70,.1); text-align: center; }
+.login-card .brand-mark { margin: 0 auto 22px; }
+.login-card h1 { font-size: 2.35rem; }
+.login-card > p { color: #687184; }
+.google-login-wrap { display: flex; justify-content: center; margin: 28px 0 10px; }
+.auth-error { background: #fff0f0; color: #b42318 !important; border-radius: 10px; padding: 10px; font-size: .9rem; }
 .container { width: min(1120px, 90%); margin: auto; padding: 60px 0; }
 .hero { max-width: 760px; margin-bottom: 38px; }
 .hero.compact { margin-bottom: 28px; }
@@ -86,6 +96,7 @@ input + textarea { margin-top: 12px; }
 footer { text-align: center; padding: 30px; color: #9299a8; font-size: .85rem; }
 @media (max-width: 760px) {
   .navbar { padding: 0 5%; }
+  .user-menu span { display: none; }
   .container { padding: 40px 0; }
   .analysis-grid, .result-grid { grid-template-columns: 1fr; }
   .results-header, .history-item { align-items: flex-start; flex-direction: column; }

@@ -5,19 +5,26 @@ import api from "../api";
 export default function History() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   async function load() {
     try {
       const { data } = await api.get("/analyze");
       setItems(data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not load your analysis history.");
     } finally {
       setLoading(false);
     }
   }
 
   async function remove(id) {
-    await api.delete(`/analyze/${id}`);
-    setItems(items.filter(item => item._id !== id));
+    try {
+      await api.delete(`/analyze/${id}`);
+      setItems(items.filter(item => item._id !== id));
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not delete this analysis.");
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -32,6 +39,7 @@ export default function History() {
 
       {loading ? <p className="muted">Loading...</p> : (
         <div className="history-list">
+          {error && <div className="error-message">{error}</div>}
           {!items.length && <div className="panel"><p>No analyses yet. Run your first analysis.</p></div>}
           {items.map(item => (
             <article className="history-item" key={item._id}>

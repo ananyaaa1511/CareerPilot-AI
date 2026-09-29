@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const analysisSchema = new mongoose.Schema(
   {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false, index: true },
     candidateName: { type: String, default: "Student" },
     resumeText: { type: String, required: true },
     jobDescription: { type: String, required: true },

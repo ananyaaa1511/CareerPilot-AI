@@ -74,7 +74,6 @@ export async function extractResumeText(req, res) {
 
     return res.status(500).json({
       message: "Failed to extract resume text.",
-      error: error.message,
     });
   }
 }
