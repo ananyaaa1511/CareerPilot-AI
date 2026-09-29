@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 import { clearAuth, getStoredUser, hasValidSession, saveAuth } from "./storage";
 
 const AuthContext = createContext(null);
