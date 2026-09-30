@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { uploadResume, analyzeResume } from "../api";
+import { useAuth } from "../auth/AuthContext";
 import "./Analyze.css";
 
-const STORAGE_KEY = "careerPilotAnalysis";
+function getStorageKey(userId) {
+  return `careerPilotAnalysis_${userId}`;
+}
 
 function Analyze() {
+  const { user } = useAuth();
+  const storageKey = getStorageKey(user.id);
   const [candidateName, setCandidateName] = useState("");
 
   const [resumeFile, setResumeFile] = useState(null);
@@ -27,7 +32,7 @@ function Analyze() {
 
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
+      const savedData = localStorage.getItem(storageKey);
 
       if (!savedData) {
         return;
@@ -47,9 +52,9 @@ function Analyze() {
     } catch (error) {
       console.error("Failed to restore saved analysis:", error);
 
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(storageKey);
     }
-  }, []);
+  }, [storageKey]);
 
   // --------------------------------------------------
   // SAVE DATA TO LOCAL STORAGE
@@ -78,7 +83,7 @@ function Analyze() {
     };
 
     localStorage.setItem(
-      STORAGE_KEY,
+      storageKey,
       JSON.stringify(dataToSave)
     );
   }, [
@@ -87,6 +92,7 @@ function Analyze() {
     resumeText,
     jobDescription,
     result,
+    storageKey,
   ]);
 
   // --------------------------------------------------
@@ -181,7 +187,7 @@ function Analyze() {
     }
 
     // Remove saved resume and result
-    const savedData = localStorage.getItem(STORAGE_KEY);
+    const savedData = localStorage.getItem(storageKey);
 
     if (savedData) {
       try {
@@ -195,7 +201,7 @@ function Analyze() {
         };
 
         localStorage.setItem(
-          STORAGE_KEY,
+          storageKey,
           JSON.stringify(updatedData)
         );
       } catch (error) {
@@ -228,7 +234,7 @@ function Analyze() {
       fileInput.value = "";
     }
 
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(storageKey);
   };
 
   // --------------------------------------------------
