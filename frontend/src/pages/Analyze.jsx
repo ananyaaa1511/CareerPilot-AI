@@ -470,7 +470,7 @@ function Analyze() {
             {/* SCORE */}
             {result.matchScore !== undefined && (
               <div className="score">
-                Match Score: {result.matchScore}%
+                Resume Match Score: {result.matchScore}%
               </div>
             )}
 
@@ -479,7 +479,7 @@ function Analyze() {
               result.matchedKeywords.length > 0 && (
                 <div className="result-box">
 
-                  <h3>Matched Skills</h3>
+                  <h3>Matched Keywords</h3>
 
                   <div className="tags">
                     {result.matchedKeywords.map(
@@ -488,7 +488,7 @@ function Analyze() {
                           key={index}
                           className="tag matched"
                         >
-                          {keyword}
+                          ✓ {keyword}
                         </span>
                       )
                     )}
@@ -502,7 +502,7 @@ function Analyze() {
               result.missingKeywords.length > 0 && (
                 <div className="result-box">
 
-                  <h3>Missing Skills</h3>
+                  <h3>Missing Keywords</h3>
 
                   <div className="tags">
                     {result.missingKeywords.map(
@@ -511,7 +511,7 @@ function Analyze() {
                           key={index}
                           className="tag missing"
                         >
-                          {keyword}
+                          ✗ {keyword}
                         </span>
                       )
                     )}

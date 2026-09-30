@@ -41,7 +41,7 @@ Return ONLY valid JSON with this exact shape:
   "interviewTopics": ["5-7 technical topics to prepare"]
 }
 
-Do not invent experience. If a skill is missing from the resume, describe it as a gap rather than claiming the candidate has it.
+Use the deterministic score and keyword lists above; do not calculate or change the numerical score. Do not invent experience, skills, or qualifications. Only identify strengths supported by the matched keywords or resume text. If a skill is missing, describe it as a gap; suggestions may say to add evidence only if the candidate genuinely has that experience.
 `;
 
   const response = await ai.models.generateContent({
